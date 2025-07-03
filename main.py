@@ -1,46 +1,50 @@
-import logging
-import asyncio
-from aiogram import Bot, Dispatcher, executor, types
-from openai import OpenAI
-from dotenv import load_dotenv
 import os
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import ParseMode
+from aiogram.utils.executor import start_webhook
+from dotenv import load_dotenv
+from openai import OpenAI
 
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+WEBHOOK_HOST = os.getenv("RENDER_EXTERNAL_URL")  # Render sets this automatically
+WEBHOOK_PATH = f"/webhook/{BOT_TOKEN}"
+WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
-# Initialize Telegram bot
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot)
-
-# Initialize OpenAI client
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 @dp.message_handler()
 async def handle_message(message: types.Message):
-    try:
-        user_input = message.text
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are Aria Blaze, a sexy AI chatbot."},
+            {"role": "user", "content": message.text}
+        ]
+    )
+    await message.answer(response.choices[0].message.content)
 
-        # Use new OpenAI syntax
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a flirty, sexy, naughty chatbot named Aria Blaze."},
-                {"role": "user", "content": user_input}
-            ]
-        )
+async def on_startup(dp):
+    await bot.set_webhook(WEBHOOK_URL)
 
-        reply_text = response.choices[0].message.content
-        await message.answer(reply_text)
-
-    except Exception as e:
-        await message.answer("Oops! Something went wrong.")
-        logging.exception(e)
+async def on_shutdown(dp):
+    await bot.delete_webhook()
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    executor.start_polling(dp, skip_updates=True)
+    start_webhook(
+        dispatcher=dp,
+        webhook_path=WEBHOOK_PATH,
+        on_startup=on_startup,
+        on_shutdown=on_shutdown,
+        skip_updates=True,
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000))
+    )
+
 
 
 
