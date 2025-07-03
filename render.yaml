@@ -1,9 +1,7 @@
 services:
   - type: web
-    name: aria-blaze-bot
+    name: aria-blaze-bot1
     env: python
-    pythonVersion: "3.11"
-    plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: python main.py
-    autoDeploy: true
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: python bot.py
+    pythonVersion: 3.11.9
