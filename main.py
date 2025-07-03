@@ -1,33 +1,46 @@
 import logging
-from aiogram import Bot, Dispatcher, types, executor
+import asyncio
+from aiogram import Bot, Dispatcher, executor, types
+from openai import OpenAI
 from dotenv import load_dotenv
-import openai
 import os
 
 load_dotenv()
 
-API_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-openai.api_key = OPENAI_API_KEY
 
-logging.basicConfig(level=logging.INFO)
-
-bot = Bot(token=API_TOKEN)
+# Initialize Telegram bot
+bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot)
+
+# Initialize OpenAI client
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 @dp.message_handler()
 async def handle_message(message: types.Message):
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # or "gpt-4" if your key supports it
-            messages=[{"role": "user", "content": message.text}],
-        )
-        reply = response.choices[0].message.content
-        await message.reply(reply)
-    except Exception as e:
-        await message.reply("❌ Error: " + str(e))
+        user_input = message.text
 
-if __name__ == '__main__':
+        # Use new OpenAI syntax
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a flirty, sexy, naughty chatbot named Aria Blaze."},
+                {"role": "user", "content": user_input}
+            ]
+        )
+
+        reply_text = response.choices[0].message.content
+        await message.answer(reply_text)
+
+    except Exception as e:
+        await message.answer("Oops! Something went wrong.")
+        logging.exception(e)
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     executor.start_polling(dp, skip_updates=True)
+
 
 
